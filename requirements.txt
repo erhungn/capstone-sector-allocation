@@ -1,0 +1,37 @@
+# Pinned to the exact versions the reported results were produced with.
+# Python 3.13.13 on macOS (arm64).
+#
+# Regenerate the pins after a deliberate upgrade with:
+#     pip freeze | grep -iE '^(package|names|here)='
+# and re-run scripts/verify_all.py before trusting any number again.
+
+# --- Data collection -------------------------------------------------------
+yfinance==1.5.2           # sector ETF and SPY prices
+fredapi==0.5.2            # FRED macro series
+requests==2.34.2          # FOMC scraper, Fama-French factor download
+beautifulsoup4==4.15.0    # FOMC HTML parsing
+
+# --- Core numerics ---------------------------------------------------------
+pandas==3.0.5
+numpy==2.4.6
+scipy==1.18.0             # Spearman IC, t/normal quantiles, rank statistics
+
+# --- Modelling -------------------------------------------------------------
+scikit-learn==1.9.0       # LogisticRegression, PCA, StandardScaler, GridSearchCV
+xgboost==3.4.0            # requires libomp on macOS: brew install libomp
+shap==0.52.0              # TreeExplainer for models C and D
+joblib==1.5.3             # persists models/final_models.joblib for SHAP
+
+# --- LLM layer -------------------------------------------------------------
+anthropic==0.120.2        # Claude Haiku 4.5, structured outputs
+
+# --- Figures ---------------------------------------------------------------
+matplotlib==3.11.1
+
+# --- Optional: not imported anywhere in the pipeline -----------------------
+# Kept because notebooks/ is provided for exploratory work. Nothing under
+# data/, llm/, models/, or backtest/ imports these, so they can be dropped
+# without affecting any reported result.
+# seaborn==0.13.2
+# plotly==6.9.0
+# jupyter==1.1.1

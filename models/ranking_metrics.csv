@@ -1,0 +1,10 @@
+signal,column,n_months,mean_ic,ic_std,ic_ir,pct_months_ic_positive,ic_t_stat,ic_p_value,precision_at_3,top3_mean_excess,top3_excess_annual,ndcg_at_3
+"Model A (logit, macro)",model_A_prob,93,0.0106,0.3524,0.0300,0.4516,0.2889,0.7733,0.4767,0.0003,0.0033,0.5430
+"Model B (logit, +LLM)",model_B_prob,93,0.0066,0.3323,0.0200,0.4839,0.1929,0.8475,0.4767,0.0008,0.0097,0.5366
+"Model C (xgb, macro)",model_C_prob,93,0.0462,0.3732,0.1237,0.5376,1.1930,0.2360,0.4982,0.0009,0.0110,0.5569
+"Model D (xgb, +LLM)",model_D_prob,93,-0.0236,0.3734,-0.0633,0.4624,-0.6105,0.5431,0.4839,-0.0005,-0.0055,0.5313
+LLM sentiment (raw),sentiment_lag1,93,-0.0023,0.4111,-0.0056,0.4839,-0.0539,0.9571,0.4839,0.0001,0.0017,0.5442
+LLM sentiment change,sentiment_change,92,0.0434,0.3425,0.1267,0.5652,1.2154,0.2273,0.5181,0.0012,0.0143,0.5534
+LLM sentiment rank,sentiment_rank,93,-0.0023,0.4111,-0.0056,0.4839,-0.0539,0.9571,0.4839,0.0001,0.0017,0.5442
+LLM relative sentiment,relative_sentiment,93,-0.0023,0.4111,-0.0056,0.4839,-0.0539,0.9571,0.4839,0.0001,0.0017,0.5442
+Random baseline,shuffled,93,0.0000,,,,,,0.4858,-0.0002,-0.0019,0.5400
