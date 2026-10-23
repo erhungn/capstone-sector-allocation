@@ -38,6 +38,9 @@ import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI  # noqa: E402
 sys.path.insert(0, str(REPO_ROOT / "backtest"))
 
 import run_backtest as B  # noqa: E402
@@ -297,7 +300,7 @@ def plot(grid: pd.DataFrame) -> None:
 
     fig.tight_layout()
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

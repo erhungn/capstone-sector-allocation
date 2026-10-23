@@ -46,6 +46,9 @@ import pandas as pd
 from scipy import stats
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI  # noqa: E402
 sys.path.insert(0, str(REPO_ROOT / "models"))
 
 from regime_analysis import VIX_HIGH, VIX_LOW  # noqa: E402
@@ -438,7 +441,7 @@ def plot(quint_tables: dict, results: pd.DataFrame) -> None:
              ha="center", fontsize=9, color="#555555")
     fig.tight_layout(rect=[0, 0.03, 1, 0.96])
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

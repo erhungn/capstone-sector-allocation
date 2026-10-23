@@ -1,0 +1,11 @@
+# LLM increment across the specification ladder
+# every rung on the same walk-forward window, embargo and inference
+rung,rung_label,estimator,source,n_obs,n_months,auc_base,auc_llm,delta_auc,ci_lo,ci_hi,ci_excludes_zero
+base,Base (no sector identity),logistic,refitted here,1007,93.000000,0.469921,0.473386,0.003465,-0.003092,0.010446,False
+base,Base (no sector identity),xgboost,refitted here,1007,93.000000,0.482688,0.487733,0.005045,-0.023208,0.032890,False
+identity,+ Sector identity,logistic,refitted here,1007,93.000000,0.482688,0.483702,0.001014,-0.007414,0.009948,False
+identity,+ Sector identity,xgboost,refitted here,1007,93.000000,0.508068,0.482530,-0.025538,-0.051089,-0.002479,True
+derived,+ Derived sentiment,logistic,models/predictions.csv,1007,93.000000,0.482686,0.493254,0.010568,-0.007651,0.028268,False
+derived,+ Derived sentiment,xgboost,models/predictions.csv,1007,93.000000,0.508068,0.485659,-0.022409,-0.055590,0.010260,False
+pca,PCA macro,logistic,models/pca_robustness.csv,1007,,0.491602,0.488177,-0.003425,-0.016125,0.009692,False
+pca,PCA macro,xgboost,models/pca_robustness.csv,1007,,0.457834,0.480343,0.022510,-0.013437,0.057878,False

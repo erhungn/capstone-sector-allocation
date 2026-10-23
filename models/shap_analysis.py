@@ -35,6 +35,10 @@ import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI  # noqa: E402
+
 DATASET = REPO_ROOT / "data" / "model_dataset.csv"
 FINAL_MODELS = REPO_ROOT / "models" / "final_models.joblib"
 VIZ_DIR = REPO_ROOT / "viz"
@@ -112,7 +116,7 @@ def plot(model_id: str, shap_frame: pd.DataFrame, X: pd.DataFrame, imp: pd.Serie
     fig.tight_layout()
     VIZ_DIR.mkdir(parents=True, exist_ok=True)
     path = VIZ_DIR / f"shap_model_{model_id.lower()}.png"
-    fig.savefig(path, dpi=150)
+    fig.savefig(path, dpi=DPI)
     plt.close(fig)
     return path
 

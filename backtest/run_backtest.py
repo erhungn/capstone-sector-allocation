@@ -44,8 +44,13 @@ import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(REPO_ROOT / "models"))
+sys.path.insert(0, str(REPO_ROOT / "common"))
 
+from plotting import DPI  # noqa: E402
+sys.path.insert(0, str(REPO_ROOT / "models"))
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+import universe as U  # noqa: E402
 from regime_analysis import VIX_HIGH  # noqa: E402
 
 DATA_DIR = REPO_ROOT / "data"
@@ -55,6 +60,17 @@ PREDICTIONS = REPO_ROOT / "models" / "predictions.csv"
 DATASET = DATA_DIR / "model_dataset.csv"
 MACRO = DATA_DIR / "macro_features.csv"
 SPY_CACHE = DATA_DIR / "raw" / "spy_prices.csv"
+
+def configure(universe: str) -> None:
+    """Point every input and output at one universe."""
+    global PREDICTIONS, DATASET, EQUITY_CSV, PERFORMANCE_CSV, EQUITY_PNG, REPORT_PNG
+    PREDICTIONS = U.path_for(REPO_ROOT / "models" / "predictions.csv", universe)
+    DATASET = U.path_for(DATA_DIR / "model_dataset.csv", universe)
+    EQUITY_CSV = U.path_for(OUT_DIR / "equity_curves.csv", universe)
+    PERFORMANCE_CSV = U.path_for(OUT_DIR / "performance.csv", universe)
+    EQUITY_PNG = U.path_for(OUT_DIR / "equity_curves.png", universe)
+    REPORT_PNG = U.path_for(REPO_ROOT / "viz" / "equity_curves_report.png", universe)
+
 
 EQUITY_CSV = OUT_DIR / "equity_curves.csv"
 PERFORMANCE_CSV = OUT_DIR / "performance.csv"
@@ -212,7 +228,9 @@ def performance(returns: pd.Series, rf: pd.Series, turnover: pd.Series | None) -
 # Orchestration
 # --------------------------------------------------------------------------
 
-def run(top_n: int, cost_bps: float) -> int:
+def run(top_n: int, cost_bps: float, universe: str = U.DEFAULT_UNIVERSE) -> int:
+    configure(universe)
+    log.info("universe %r -> %s", universe, PREDICTIONS.name)
     for path in (PREDICTIONS, DATASET, MACRO):
         if not path.exists():
             log.error("%s not found -- run the upstream script first", path)
@@ -393,7 +411,7 @@ def plot(equity: pd.DataFrame, perf: pd.DataFrame) -> None:
     ax2.set_xlim(equity.index[0], equity.index[-1] + pd.Timedelta(days=120))
 
     fig.align_ylabels([ax, ax2])
-    fig.savefig(EQUITY_PNG, dpi=150, bbox_inches="tight")
+    fig.savefig(EQUITY_PNG, dpi=DPI, bbox_inches="tight")
     REPORT_PNG.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(REPORT_PNG, dpi=300, bbox_inches="tight")
     plt.close(fig)
@@ -428,6 +446,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--top-n", type=int, default=3, help="sectors held each month")
     parser.add_argument("--cost-bps", type=float, default=10.0, help="one-way cost in bps")
+    parser.add_argument("--universe", default=U.DEFAULT_UNIVERSE, choices=sorted(U.UNIVERSES),
+                        help="asset universe (default %(default)s)")
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
 
@@ -436,7 +456,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s  %(levelname)-7s %(message)s",
         datefmt="%H:%M:%S",
     )
-    return run(args.top_n, args.cost_bps)
+    return run(args.top_n, args.cost_bps, args.universe)
 
 
 if __name__ == "__main__":

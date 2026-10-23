@@ -46,7 +46,9 @@ from scipy import stats
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "common"))
 
+from plotting import DPI  # noqa: E402
 from stats import newey_west_t  # noqa: E402
+
 PREDICTIONS = REPO_ROOT / "models" / "predictions.csv"
 DATASET = REPO_ROOT / "data" / "model_dataset.csv"
 OUT_CSV = REPO_ROOT / "models" / "ic_significance.csv"
@@ -334,7 +336,7 @@ def plot(nulls: dict, observed: dict, results: pd.DataFrame) -> None:
                  fontsize=13, weight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.94])
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

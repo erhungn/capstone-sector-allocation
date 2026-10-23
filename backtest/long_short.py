@@ -59,6 +59,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "backtest"))
 sys.path.insert(0, str(REPO_ROOT / "common"))
 
+from plotting import DPI  # noqa: E402
 from stats import newey_west_t  # noqa: E402
 
 import run_backtest as B  # noqa: E402
@@ -332,7 +333,7 @@ def plot(sims: dict[str, pd.DataFrame], results: pd.DataFrame) -> None:
 
     fig.tight_layout(rect=[0, 0.025, 1, 1])
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

@@ -1,0 +1,13 @@
+### Table 3 — Portfolio performance
+
+| Strategy | CAGR | Ann. vol | Sharpe | Sortino | Max DD | Calmar | Turnover |
+|---|---|---|---|---|---|---|---|
+| Model A | 11.47% | 17.53% | 0.56 | 0.82 | -26.68% | 0.43 | 355% |
+| Model B | 12.00% | 17.65% | 0.59 | 0.88 | -26.19% | 0.46 | 428% |
+| Model C | 11.67% | 16.13% | 0.61 | 0.98 | -20.78% | 0.56 | 776% |
+| Model D | 9.71% | 16.34% | 0.49 | 0.75 | -22.53% | 0.43 | 827% |
+| Equal weight | 12.12% | 16.05% | 0.63 | 0.96 | -22.65% | 0.54 | 23% |
+| SPY buy & hold | 14.84% | 16.49% | 0.77 | 1.18 | -23.93% | 0.62 | 0% |
+| Momentum 12-1 | 13.72% | 15.97% | 0.73 | 1.11 | -15.70% | 0.87 | 265% |
+
+*Top-3 equal-weight, monthly rebalance, 10 bps one-way cost charged on drifted weights. 93 realised months (2018-04 to 2025-12). Sharpe and Sortino use FEDFUNDS as the risk-free rate; turnover is one-way annual.*

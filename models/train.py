@@ -75,12 +75,26 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+import universe as U  # noqa: E402
+
 DATASET = REPO_ROOT / "data" / "model_dataset.csv"
 OUT_DIR = REPO_ROOT / "models"
 PREDICTIONS_CSV = OUT_DIR / "predictions.csv"
 METRICS_CSV = OUT_DIR / "metrics.csv"
 FEATURE_JSON = OUT_DIR / "feature_names.json"
 FINAL_MODELS = OUT_DIR / "final_models.joblib"
+
+
+def configure(universe: str) -> None:
+    """Point the input dataset and every output at one universe."""
+    global DATASET, PREDICTIONS_CSV, METRICS_CSV, FEATURE_JSON, FINAL_MODELS
+    DATASET = U.path_for(REPO_ROOT / "data" / "model_dataset.csv", universe)
+    PREDICTIONS_CSV = U.path_for(OUT_DIR / "predictions.csv", universe)
+    METRICS_CSV = U.path_for(OUT_DIR / "metrics.csv", universe)
+    FEATURE_JSON = U.path_for(OUT_DIR / "feature_names.json", universe)
+    FINAL_MODELS = U.path_for(OUT_DIR / "final_models.joblib", universe)
 
 RANDOM_STATE = 42
 
@@ -252,7 +266,9 @@ def train_cutoff(pred_date: pd.Timestamp, embargo_months: int) -> pd.Timestamp:
 
 
 def run(oos_start: str, retune_every: int, n_splits: int, min_train_months: int,
-        embargo_months: int) -> int:
+        embargo_months: int, universe: str = U.DEFAULT_UNIVERSE) -> int:
+    configure(universe)
+    log.info("universe %r -> %s", universe, DATASET.name)
     if not DATASET.exists():
         log.error("%s not found -- run data/build_dataset.py first", DATASET)
         return 1
@@ -469,6 +485,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--embargo-months", type=int, default=1,
                         help="months withheld before each prediction month "
                              "(1 = implementable; 0 = reproduce the original protocol)")
+    parser.add_argument("--universe", default=U.DEFAULT_UNIVERSE, choices=sorted(U.UNIVERSES),
+                        help="asset universe (default %(default)s)")
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
 
@@ -483,7 +501,7 @@ def main(argv: list[str] | None = None) -> int:
             "training label settles at the close of the prediction month itself"
         )
     return run(args.oos_start, args.retune_every, args.cv_splits, args.min_train_months,
-               args.embargo_months)
+               args.embargo_months, args.universe)
 
 
 if __name__ == "__main__":

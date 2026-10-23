@@ -49,6 +49,10 @@ from typing import Any
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
+
+import universe as U  # noqa: E402
+
 # --------------------------------------------------------------------------
 # Configuration -- treat everything in this block as frozen
 # --------------------------------------------------------------------------
@@ -65,21 +69,11 @@ MAX_ATTEMPTS = 3
 PRICE_IN_PER_MTOK = 1.00
 PRICE_OUT_PER_MTOK = 5.00
 
-SECTORS = ["XLK", "XLF", "XLE", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB", "XLRE", "XLC"]
-
-SECTOR_NAMES = {
-    "XLK": "Technology",
-    "XLF": "Financials",
-    "XLE": "Energy",
-    "XLV": "Health Care",
-    "XLI": "Industrials",
-    "XLY": "Consumer Discretionary",
-    "XLP": "Consumer Staples",
-    "XLU": "Utilities",
-    "XLB": "Materials",
-    "XLRE": "Real Estate",
-    "XLC": "Communication Services",
-}
+# Set by configure() before any call is made. They start at the main
+# specification so importing this module and reading the prompt gives the
+# eleven-asset version that produced the published scores.
+SECTORS: list[str] = list(U.EQUITY_SECTORS)
+SECTOR_NAMES = dict(U.ASSET_NAMES)
 
 SYSTEM_PROMPT = (
     "You are a senior macro strategist analyzing Federal Reserve communications "
@@ -104,8 +98,8 @@ All values are lagged so they were observable at the start of the month.
 
 ## Task
 
-Rate each of the 11 SPDR sector ETFs below on how this FOMC communication
-affects that sector's outlook over the coming month.
+Rate each of the {asset_count} {asset_plural} below on how this FOMC communication
+affects that {asset_noun}'s outlook over the coming month.
 
 {sector_list}
 
@@ -114,8 +108,8 @@ Use a sentiment scale from -1.0 to +1.0:
    0.0  neutral
   +1.0  very bullish for the sector
 
-Judge each sector on the transmission channel from this policy stance to that
-sector's earnings, funding costs, and demand. Do not give every sector the same
+Judge each {asset_noun} on the transmission channel from this policy stance to that
+{asset_noun}'s earnings, funding costs, and demand. Do not give every {asset_noun} the same
 score unless the communication genuinely is neutral across all of them.
 
 ## Output format
@@ -125,13 +119,22 @@ Respond with strict JSON matching exactly this schema, and nothing else:
 {{"sectors": {{"XLK": {{"sentiment": 0.0, "rationale": "..."}}, ...}}}}
 
 Constraints:
-- All 11 sectors listed above must be present, using those exact ticker keys.
+- All {asset_count} {asset_noun}s listed above must be present, using those exact ticker keys.
 - "sentiment" must be a number between -1.0 and 1.0 inclusive.
 - "rationale" must be at most 2 sentences.
 - Output raw JSON only. No markdown fences, no commentary before or after.
 """
 
 SECTOR_LIST_BLOCK = "\n".join(f"- {t}: {SECTOR_NAMES[t]}" for t in SECTORS)
+
+# Wording that has to agree with the universe. The 11-asset values reproduce the
+# original prompt character for character, so the published scores remain the
+# output of a prompt this file can still render.
+PROMPT_WORDS = {
+    "11asset": {"asset_count": 11, "asset_plural": "SPDR sector ETFs", "asset_noun": "sector"},
+    "14asset": {"asset_count": 14, "asset_plural": "assets", "asset_noun": "asset"},
+}
+UNIVERSE = U.DEFAULT_UNIVERSE
 
 # Enforced server-side via output_config.format. This makes malformed JSON,
 # missing sectors, unexpected sectors, and wrong-typed scores impossible at the
@@ -141,6 +144,34 @@ SECTOR_LIST_BLOCK = "\n".join(f"- {t}: {SECTOR_NAMES[t]}" for t in SECTORS)
 # bounds and string length. So the [-1.0, 1.0] range check and the 2-sentence
 # rationale limit stay in parse_and_validate() and the prompt respectively --
 # the schema narrows the failure surface, it does not replace validation.
+def build_schema(assets: list[str]) -> dict[str, Any]:
+    """The server-side output schema for one universe."""
+    return {
+        "type": "object",
+        "properties": {
+            "sectors": {
+                "type": "object",
+                "properties": {
+                    ticker: {
+                        "type": "object",
+                        "properties": {
+                            "sentiment": {"type": "number"},
+                            "rationale": {"type": "string"},
+                        },
+                        "required": ["sentiment", "rationale"],
+                        "additionalProperties": False,
+                    }
+                    for ticker in assets
+                },
+                "required": list(assets),
+                "additionalProperties": False,
+            }
+        },
+        "required": ["sectors"],
+        "additionalProperties": False,
+    }
+
+
 OUTPUT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -175,6 +206,23 @@ FOMC_DIR = DATA_DIR / "fomc"
 CALENDAR_CSV = FOMC_DIR / "fomc_calendar.csv"
 MACRO_CSV = DATA_DIR / "macro_features.csv"
 OUT_CSV = DATA_DIR / "llm_sentiment.csv"
+
+
+def configure(universe: str) -> None:
+    """Point the module's prompt, schema and output path at one universe.
+
+    Mutating module globals is not elegant, but the alternative is threading a
+    universe argument through every function that mentions a ticker, and this
+    script's value is that its prompt is *frozen* -- the fewer moving parts
+    between the template and the API call, the easier that is to verify. The
+    switch happens once, before any request is built.
+    """
+    global SECTORS, SECTOR_LIST_BLOCK, OUTPUT_SCHEMA, OUT_CSV, UNIVERSE
+    UNIVERSE = universe
+    SECTORS = U.tickers(universe)
+    SECTOR_LIST_BLOCK = "\n".join(f"- {t}: {SECTOR_NAMES[t]}" for t in SECTORS)
+    OUTPUT_SCHEMA = build_schema(SECTORS)
+    OUT_CSV = U.path_for(DATA_DIR / "llm_sentiment.csv", universe)
 LOG_JSONL = REPO_ROOT / "logs" / "llm_calls.jsonl"
 
 log = logging.getLogger("sentiment")
@@ -267,6 +315,7 @@ def build_user_prompt(
         month=month_end.date(),
         macro_block=format_macro_block(macro_row),
         sector_list=SECTOR_LIST_BLOCK,
+        **PROMPT_WORDS[UNIVERSE],
     )
 
 
@@ -589,7 +638,12 @@ def estimate_cost(calendar: pd.DataFrame, macro: pd.DataFrame, months: list[pd.T
     )
 
 
-def run(start_str: str, end_str: str, dry_run: bool, force: bool) -> int:
+def run(start_str: str, end_str: str, dry_run: bool, force: bool,
+        universe: str = U.DEFAULT_UNIVERSE) -> int:
+    configure(universe)
+    log.info("universe %r: %d assets -- %s", universe, len(SECTORS), ", ".join(SECTORS))
+    log.info("output: %s", OUT_CSV)
+
     for path in (CALENDAR_CSV, MACRO_CSV):
         if not path.exists():
             log.error("%s not found -- run the upstream script first", path)
@@ -734,6 +788,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--end", default="2025-12", help="last month, YYYY-MM")
     parser.add_argument("--dry-run", action="store_true", help="process only the first 3 months")
     parser.add_argument("--force", action="store_true", help="rescore months already in the CSV")
+    parser.add_argument("--universe", default=U.DEFAULT_UNIVERSE, choices=sorted(U.UNIVERSES),
+                        help="asset universe to score (default %(default)s)")
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
 
@@ -742,7 +798,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s  %(levelname)-7s %(message)s",
         datefmt="%H:%M:%S",
     )
-    return run(args.start, args.end, args.dry_run, args.force)
+    return run(args.start, args.end, args.dry_run, args.force, args.universe)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,64 @@
+# 11-asset (main specification) vs 14-asset (extension)
+# MODEL METRICS
+universe,n_assets,model,n_obs,n_months,auc,auc_ci_lo,auc_ci_hi,mean_ic,ic_ir,cagr,sharpe,max_drawdown
+11asset,11,A,1007,93,0.482686,0.448622,0.519856,0.010557,0.029954,0.114700,0.563500,-0.266800
+11asset,11,B,1007,93,0.493254,0.459864,0.527259,0.006647,0.020001,0.120000,0.587100,-0.261900
+11asset,11,C,1007,93,0.508068,0.474879,0.541450,0.046163,0.123704,0.116700,0.606900,-0.207800
+11asset,11,D,1007,93,0.485659,0.449904,0.519979,-0.023636,-0.063301,0.097100,0.491400,-0.225300
+11asset,11,raw sentiment,1007,93,,,,-0.002299,-0.005593,,,
+14asset,14,A,1286,93,0.531971,0.489589,0.577174,0.089484,0.218263,0.124200,0.579300,-0.252700
+14asset,14,B,1286,93,0.532297,0.490284,0.576741,0.076273,0.201894,0.084400,0.392700,-0.276700
+14asset,14,C,1286,93,0.506907,0.472539,0.543780,0.047541,0.145383,0.095700,0.464900,-0.331300
+14asset,14,D,1286,93,0.512574,0.480438,0.542113,0.037544,0.134360,0.088500,0.444900,-0.346800
+14asset,14,raw sentiment,1286,93,,,,-0.002929,-0.006952,,,
+
+# LLM INCREMENT (paired, month-clustered bootstrap)
+universe,pair,delta_auc,ci_lo,ci_hi,ci_excludes_zero
+11asset,Logistic (B−A),0.010568,-0.007651,0.028268,False
+11asset,XGBoost (D−C),-0.022409,-0.055590,0.010260,False
+14asset,Logistic (B−A),0.000326,-0.017861,0.017126,False
+14asset,XGBoost (D−C),0.005667,-0.027582,0.035144,False
+
+# REDUNDANCY: R-SQUARED OF SENTIMENT ON THE MACRO BLOCK
+universe,n_assets,r2_mean_tone,adj_r2_mean_tone,r2_dispersion,adj_r2_dispersion,r2_pooled,adj_r2_pooled,r2_relative,adj_r2_relative
+11asset,11,0.784862,0.756176,0.647932,0.600990,0.260508,0.252575,0.000000,-0.010728
+14asset,14,0.695785,0.655223,0.645955,0.598749,0.102300,0.094752,0.000000,-0.008408
+
+# REALISED VOLATILITY BY ASSET
+ticker,asset_class,monthly_vol,annualised_vol,vs_equity_median
+XLK,equity sector,0.055688,0.192910,1.045085
+XLF,equity sector,0.055909,0.193673,1.049219
+XLE,equity sector,0.085216,0.295197,1.599223
+XLV,equity sector,0.041146,0.142533,0.772167
+XLI,equity sector,0.053286,0.184588,1.000000
+XLY,equity sector,0.058094,0.201242,1.090224
+XLP,equity sector,0.036252,0.125581,0.680333
+XLU,equity sector,0.043955,0.152264,0.824887
+XLB,equity sector,0.053276,0.184553,0.999810
+XLRE,equity sector,0.049373,0.171032,0.926562
+XLC,equity sector,0.055570,0.192501,1.042871
+TLT,bond/gold,0.039281,0.136075,0.737180
+IEF,bond/gold,0.018932,0.065581,0.355284
+GLD,bond/gold,0.041009,0.142060,0.769604
+
+# EQUAL-WEIGHT BENCHMARK
+universe,n_assets,months,mean_monthly_return,monthly_vol,annualised_vol,cagr
+11asset,11,119,0.011030,0.042197,0.146175,0.128711
+14asset,14,119,0.009529,0.034686,0.120155,0.112599
+
+# TOP-3 SELECTION OF BONDS AND GOLD (14-asset)
+model,months,months_with_an_extended_asset,pct_months_with_extended,extended_slots,pct_of_all_slots,expected_pct_if_random,n_months_TLT,n_months_IEF,n_months_GLD
+A,93,0,0.000000,0,0.000000,0.214286,0,0,0
+B,93,6,0.064516,6,0.021505,0.214286,6,0,0
+C,93,30,0.322581,33,0.118280,0.214286,7,4,22
+D,93,34,0.365591,42,0.150538,0.214286,12,9,21
+
+# IS THE 14-ASSET GAIN FORECASTING OR AN ASSET-CLASS TILT?
+signal,auc_full_universe,auc_equities_only,mean_ic_equities_only
+"static: equity=1, bond/gold=0 (no timing)",0.538392,,
+Model A,0.531971,0.508217,0.044119
+Model B,0.532297,0.511550,0.029879
+Model C,0.506907,0.483148,-0.006605
+Model D,0.512574,0.488947,-0.026578
+P(beat benchmark): equity sectors,0.504538,,
+P(beat benchmark): bonds + gold,0.390681,,

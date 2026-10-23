@@ -60,6 +60,8 @@ class Stage:
     # Slow means "retrains a model, resamples >=10k times, or hits the network".
     # --quick drops these so a smoke test exercises the wiring, not the compute.
     is_slow: bool = False
+    # Extra command-line arguments, e.g. ("--universe", "14asset").
+    argv: tuple[str, ...] = field(default=())
     note: str = ""
 
 
@@ -121,6 +123,42 @@ STAGES: list[Stage] = [
           ("models/calibration_results.csv",), is_slow=True),
     Stage("pca", "models/pca_robustness.py", "PCA macro robustness", "analysis",
           ("models/pca_robustness.csv",), is_slow=True),
+    Stage("spec-ladder", "models/spec_ladder.py", "LLM increment across specifications",
+          "analysis", ("models/spec_ladder.csv",), is_slow=True,
+          note="refits two earlier feature sets so every rung shares one window"),
+
+    # --- 14-asset extension -------------------------------------------------
+    # The main specification above is never touched by these: every output
+    # carries a _14asset suffix. See common/universe.py.
+    Stage("features-14", "data/build_features.py", "Features, 14-asset universe",
+          "extension", ("data/sector_features_14asset.csv",),
+          force_flag="--force", argv=("--universe", "14asset")),
+    Stage("sentiment-14", "llm/sentiment_pipeline.py", "Claude sentiment, 14-asset universe",
+          "extension", ("data/llm_sentiment_14asset.csv",), force_flag="--force",
+          needs_env=("ANTHROPIC_API_KEY",), is_llm=True, is_slow=True,
+          argv=("--universe", "14asset"),
+          note="COSTS MONEY -- about $2.30 for a full 120-month rescore"),
+    Stage("dataset-14", "data/build_dataset.py", "Panel, 14-asset universe",
+          "extension", ("data/model_dataset_14asset.csv",),
+          argv=("--universe", "14asset")),
+    Stage("train-14", "models/train.py", "Walk-forward training, 14-asset universe",
+          "extension", ("models/predictions_14asset.csv", "models/metrics_14asset.csv"),
+          is_slow=True, argv=("--universe", "14asset")),
+    Stage("backtest-14", "backtest/run_backtest.py", "Backtest, 14-asset universe",
+          "extension", ("backtest/equity_curves_14asset.csv",
+                        "backtest/performance_14asset.csv"),
+          argv=("--universe", "14asset")),
+    Stage("universe-compare", "models/universe_comparison.py", "11 vs 14 asset comparison",
+          "extension", ("models/universe_comparison.csv",)),
+    Stage("per-asset", "models/per_asset_analysis.py", "Per-asset breakdown, both universes",
+          "extension", ("models/per_asset_results.csv",),
+          note="exploratory; BH-corrected across assets"),
+
+    # --- report deliverables, downstream of every analysis above -------------
+    Stage("tables", "scripts/build_report_tables.py", "Report tables (CSV + Markdown)",
+          "report", ("reports/tables/table1_model_performance.csv",
+                     "reports/tables/table8_robustness_summary.csv",
+                     "reports/tables/README.md")),
 ]
 
 GROUP_TITLES = {
@@ -130,6 +168,8 @@ GROUP_TITLES = {
     "models": "MODELLING",
     "backtest": "BACKTEST",
     "analysis": "STANDALONE ANALYSES",
+    "extension": "14-ASSET EXTENSION (bonds + gold)",
+    "report": "REPORT DELIVERABLES",
 }
 
 
@@ -218,7 +258,7 @@ def run_stage(stage: Stage, tee: Tee) -> float:
     the same situation and would otherwise fail on a guard we deliberately
     triggered ourselves.
     """
-    cmd = [sys.executable, str(REPO_ROOT / stage.script)]
+    cmd = [sys.executable, str(REPO_ROOT / stage.script), *stage.argv]
     if stage.force_flag and outputs_present(stage):
         cmd.append(stage.force_flag)
 

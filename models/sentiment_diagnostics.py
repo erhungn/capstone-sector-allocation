@@ -40,6 +40,10 @@ import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI  # noqa: E402
+
 DATASET = REPO_ROOT / "data" / "model_dataset.csv"
 SENTIMENT = REPO_ROOT / "data" / "llm_sentiment.csv"
 MACRO = REPO_ROOT / "data" / "macro_features.csv"
@@ -87,9 +91,6 @@ def run() -> int:
         })
     table = pd.DataFrame(rows).sort_values("corr_with_monthly_mean",
                                            key=lambda s: s.abs(), ascending=False)
-    OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
-    table.to_csv(OUT_CSV, index=False, float_format="%.4f")
-    log.info("Wrote %s", OUT_CSV)
 
     # ---- 2. how much of sentiment does the whole macro block explain? ----
     monthly_mean = senti.mean(axis=1).reindex(macro.index)
@@ -100,6 +101,27 @@ def run() -> int:
     pooled = data.dropna(subset=["sentiment_lag1"] + macro_cols)
     r2_pooled, adj_pooled = ols_r2(pooled[macro_cols], pooled["sentiment_lag1"])
     r2_rel, adj_rel = ols_r2(pooled[macro_cols], pooled["relative_sentiment"])
+
+    # The R^2 decomposition is the headline of this script, so it is written to
+    # the CSV rather than only logged -- the report table is built from the file.
+    decomposition = pd.DataFrame([
+        {"component": "Monthly mean tone", "n": int(monthly_mean.notna().sum()),
+         "r2_on_macro_block": r2_mean, "adj_r2": adj_mean},
+        {"component": "Monthly dispersion", "n": int(dispersion.notna().sum()),
+         "r2_on_macro_block": r2_disp, "adj_r2": adj_disp},
+        {"component": "Pooled score", "n": len(pooled),
+         "r2_on_macro_block": r2_pooled, "adj_r2": adj_pooled},
+        {"component": "Relative (sector-specific)", "n": len(pooled),
+         "r2_on_macro_block": r2_rel, "adj_r2": adj_rel},
+    ])
+
+    OUT_CSV.parent.mkdir(parents=True, exist_ok=True)
+    with OUT_CSV.open("w", encoding="utf-8") as fh:
+        fh.write("# PAIRWISE CORRELATIONS\n")
+        table.to_csv(fh, index=False, float_format="%.4f")
+        fh.write("\n# VARIANCE OF SENTIMENT EXPLAINED BY THE 14-VARIABLE MACRO BLOCK\n")
+        decomposition.to_csv(fh, index=False, float_format="%.4f")
+    log.info("Wrote %s", OUT_CSV)
 
     # ---- report ---------------------------------------------------------
     log.info("")
@@ -174,7 +196,7 @@ def plot(table: pd.DataFrame, r2s: dict[str, float]) -> None:
 
     fig.tight_layout()
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

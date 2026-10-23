@@ -45,6 +45,10 @@ import numpy as np
 import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI  # noqa: E402
+
 PREDICTIONS = REPO_ROOT / "models" / "predictions.csv"
 OUT_CSV = REPO_ROOT / "models" / "calibration_results.csv"
 PLOT_PNG = REPO_ROOT / "viz" / "calibration_curves.png"
@@ -428,7 +432,7 @@ def plot(frame: pd.DataFrame, bins_by_model: dict, results: pd.DataFrame) -> Non
     # GridSpec already sets the spacing; tight_layout would fight the shared axes.
     fig.subplots_adjust(top=0.91, bottom=0.06, left=0.08, right=0.97)
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

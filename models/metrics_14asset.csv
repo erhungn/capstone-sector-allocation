@@ -1,0 +1,5 @@
+model,estimator,feature_set,n_predictions,accuracy,precision,recall,auc
+A,logistic,macro,1286,0.5257,0.5064,0.3880,0.5320
+B,logistic,macro_llm,1286,0.5117,0.4870,0.3636,0.5323
+C,xgboost,macro,1286,0.4891,0.4622,0.4075,0.5069
+D,xgboost,macro_llm,1286,0.4953,0.4683,0.3961,0.5126

@@ -58,6 +58,7 @@ equal-weight average of the eleven over the following month?
 | `viz/` | Generated figures |
 | `logs/` | LLM API call log and the pipeline run log |
 | `docs/` | `METHODS.md` — the full methodological record |
+| `reports/` | Report-ready deliverables: `tables/`, `figures/captions.md`, `KEY_NUMBERS.md` |
 | `notebooks/` | Empty; provided for exploratory work |
 
 ## Setup
@@ -118,8 +119,8 @@ Then verify:
 python scripts/verify_all.py
 ```
 
-20 checks across data integrity, timing, reproducibility, result consistency,
-documentation and repository hygiene. Exit code is 0 only if all pass, so it is
+23 checks across data integrity, timing, reproducibility, result consistency,
+documentation, report deliverables and repository hygiene. Exit code is 0 only if all pass, so it is
 safe to gate on. A check whose inputs are missing reports SKIP, never PASS.
 
 ## Data sources and terms
@@ -162,6 +163,29 @@ narrative. In brief:
   forecast. Adding the LLM significantly *worsens* Brier score in the linear pair
   (ΔBrier +0.0045, CI [+0.0006, +0.0092]) — the only statistically significant
   LLM effect found anywhere, and it points the wrong way.
+
+## Extension: bonds and gold
+
+```bash
+python run_all.py --only features-14 sentiment-14 dataset-14 train-14 backtest-14 universe-compare
+```
+
+The null was re-tested on a 14-asset universe (the 11 sectors plus TLT, IEF and
+GLD), on the reasoning that FOMC communication bears on duration and gold more
+directly than on equity sectors. Sentiment was rescored from scratch for all 120
+months, because the cross-sectional context the model sees is part of the
+prompt. Outputs carry a `_14asset` suffix; the 11-asset specification is
+untouched. Details in [`models/universe_comparison.py`](models/universe_comparison.py).
+
+**The null holds, and the headline AUCs are misleading.** All four models score
+above 0.50 in the extended universe (0.507–0.532, up from 0.483–0.508), but a
+signal containing no information at all — "score every equity 1 and every
+bond 0, never update" — scores **0.5384**, beating all of them. Restricted to
+equity rows, the models fall back to 0.483–0.512. The gain is a static
+asset-class tilt: bonds beat the raw-return equal-weight average only 39% of the
+time because they carry a third to three-quarters of equity volatility. The LLM
+increment remains indistinguishable from zero in both pairs (+0.0003 and
++0.0057, both intervals spanning zero).
 
 ## Known limitations
 
@@ -223,6 +247,22 @@ will not reproduce the exact dataset: Yahoo Finance adjusted closes change with
 corporate actions, and FRED series are revised. The committed CSVs are the record
 of what the results were computed from. `--force` is deliberately opt-in for this
 reason, and `collect.py` refuses to overwrite without it.
+
+## Report deliverables
+
+```bash
+python scripts/build_report_tables.py          # rebuild all 8 tables
+python scripts/build_report_tables.py --check  # fail if any is stale
+```
+
+- **`reports/tables/`** — eight publication-formatted tables, each as CSV and
+  Markdown, generated only by the builder. `verify_all.py` rebuilds them and
+  fails if a committed table no longer matches its source data, so the report
+  cannot quote a superseded number.
+- **`reports/figures/captions.md`** — a paragraph per figure, written to sit
+  under it in the report.
+- **`reports/KEY_NUMBERS.md`** — every headline figure with its source file.
+  Look numbers up there rather than re-deriving them.
 
 ## Output inventory
 

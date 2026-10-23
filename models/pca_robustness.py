@@ -99,6 +99,9 @@ from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI  # noqa: E402
 sys.path.insert(0, str(REPO_ROOT / "models"))
 sys.path.insert(0, str(REPO_ROOT / "backtest"))
 
@@ -702,7 +705,7 @@ def plot(variance: pd.DataFrame, scree: dict, macro: list[str],
                  fontsize=13, weight="bold")
     fig.tight_layout(rect=[0, 0, 1, 0.96])
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

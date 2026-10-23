@@ -1,0 +1,10 @@
+### Table 5 — Information redundancy decomposition
+
+| Component | n | R² on macro block | Adj. R² | Interpretation |
+|---|---|---|---|---|
+| Monthly mean tone | 120 | 0.7849 | 0.7562 | The LLM's overall tone largely restates the macro inputs it was given. |
+| Monthly dispersion | 120 | 0.6479 | 0.6010 | How much the LLM spreads sectors apart is also mostly macro-driven. |
+| Pooled score | 1248 | 0.2656 | 0.2573 | Across all sector-months, macro explains about a quarter of the raw score. |
+| Relative (sector-specific) | 1248 | 0.0009 | -0.0104 | Orthogonal to macro by construction — every sector sees the same macro row. Any genuinely new information must live here, and this is the component the IC tests find uninformative. |
+
+*OLS of each sentiment component on all 14 lagged macro features. The macro block is identical across sectors within a month, so it can only explain the cross-sectional mean; the sector-specific residual is orthogonal to it by construction.*

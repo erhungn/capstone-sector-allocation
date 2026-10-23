@@ -37,23 +37,20 @@ from typing import NamedTuple
 
 import pandas as pd
 
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
+
+import universe as U  # noqa: E402
+
 # --------------------------------------------------------------------------
 # Configuration
 # --------------------------------------------------------------------------
 
-SECTOR_ETFS = [
-    "XLK",   # Technology
-    "XLF",   # Financials
-    "XLE",   # Energy
-    "XLV",   # Health Care
-    "XLI",   # Industrials
-    "XLY",   # Consumer Discretionary
-    "XLP",   # Consumer Staples
-    "XLU",   # Utilities
-    "XLB",   # Materials
-    "XLRE",  # Real Estate      (inception 2015-10)
-    "XLC",   # Communication Svcs (inception 2018-06)
-]
+# The full download set: every ticker any universe can contain. Declared in
+# common/universe.py so collect.py, build_dataset.py and the sentiment pipeline
+# cannot drift apart. Downloading the superset once means the 11-asset results
+# stay reproducible from the same price files the 14-asset extension uses --
+# the extra columns are simply not selected by the 11-asset build.
+SECTOR_ETFS = U.ALL_TICKERS
 
 class Spec(NamedTuple):
     """How one FRED series becomes one model feature.
@@ -104,6 +101,7 @@ WARMUP_MONTHS = 12 + max(s.lag for s in FRED_SERIES.values()) + 1
 
 DATA_DIR = Path(__file__).resolve().parent
 RAW_DIR = DATA_DIR / "raw"
+REPO_ROOT = DATA_DIR.parent
 
 log = logging.getLogger("collect")
 

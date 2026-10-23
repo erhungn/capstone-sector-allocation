@@ -41,6 +41,10 @@ import pandas as pd
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI  # noqa: E402
+
 PREDICTIONS = REPO_ROOT / "models" / "predictions.csv"
 DATASET = REPO_ROOT / "data" / "model_dataset.csv"
 RESULTS_CSV = REPO_ROOT / "models" / "regime_results.csv"
@@ -205,7 +209,7 @@ def plot(results: pd.DataFrame) -> None:
 
     fig.tight_layout()
     PLOT_PNG.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(PLOT_PNG, dpi=150)
+    fig.savefig(PLOT_PNG, dpi=DPI)
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

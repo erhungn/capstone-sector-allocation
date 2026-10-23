@@ -1,3 +1,4 @@
+# PAIRWISE CORRELATIONS
 macro_feature,corr_with_sentiment,corr_with_relative_sentiment,corr_with_monthly_mean,corr_with_dispersion
 T10Y2Y_lag1,0.3888,-0.0095,0.6742,-0.3979
 M2_YOY_lag2,0.3236,0.0010,0.5503,0.0698
@@ -13,3 +14,10 @@ T10YIE_lag1,-0.0676,0.0160,-0.1378,-0.1473
 MANEMP_MOM_lag2,0.0653,0.0006,0.1115,-0.1365
 BAA10Y_lag1,-0.0779,-0.0194,-0.1045,0.3647
 PERMIT_lag2,-0.0119,0.0181,-0.0552,0.1924
+
+# VARIANCE OF SENTIMENT EXPLAINED BY THE 14-VARIABLE MACRO BLOCK
+component,n,r2_on_macro_block,adj_r2
+Monthly mean tone,120,0.7849,0.7562
+Monthly dispersion,120,0.6479,0.6010
+Pooled score,1248,0.2656,0.2573
+Relative (sector-specific),1248,0.0009,-0.0104

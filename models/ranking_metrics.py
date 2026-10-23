@@ -46,6 +46,10 @@ import pandas as pd
 from scipy import stats
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "common"))
+
+from plotting import DPI, color_for  # noqa: E402
+
 PREDICTIONS = REPO_ROOT / "models" / "predictions.csv"
 DATASET = REPO_ROOT / "data" / "model_dataset.csv"
 OUT_CSV = REPO_ROOT / "models" / "ranking_metrics.csv"
@@ -288,8 +292,9 @@ def plot(per_month: dict[str, pd.DataFrame], frame: pd.DataFrame) -> None:
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    colors = {"Model C (xgb, macro)": "#E45756", "Model D (xgb, +LLM)": "#F58518",
-              "LLM sentiment (raw)": "#4C78A8"}
+    # Colours come from common/plotting.py so a series keeps the same colour in
+    # every figure -- LLM sentiment is purple everywhere, never Model A's blue.
+    colors = {name: color_for(name) for name in PLOT_SIGNALS}
     fig, (ax, ax2) = plt.subplots(2, 1, figsize=(13, 8), sharex=True,
                                   gridspec_kw={"height_ratios": [2.4, 1], "hspace": 0.1})
 
@@ -307,6 +312,10 @@ def plot(per_month: dict[str, pd.DataFrame], frame: pd.DataFrame) -> None:
     ax.set_title("Rolling cross-sectional information coefficient\n"
                  "Spearman rank correlation between signal and realised excess return",
                  fontsize=13, weight="bold")
+    # Headroom for the legend. Without it the box sits on top of Model C's 2019
+    # peak and hides the data it is labelling.
+    lo, hi = ax.get_ylim()
+    ax.set_ylim(lo, hi + 0.42 * (hi - lo))
     ax.legend(loc="upper left", frameon=True, framealpha=0.92, fontsize=9)
     ax.grid(alpha=0.25)
     for side in ("top", "right"):
@@ -325,7 +334,7 @@ def plot(per_month: dict[str, pd.DataFrame], frame: pd.DataFrame) -> None:
         for side in ("top", "right"):
             ax2.spines[side].set_visible(False)
 
-    fig.savefig(PLOT_PNG, dpi=150, bbox_inches="tight")
+    fig.savefig(PLOT_PNG, dpi=DPI, bbox_inches="tight")
     plt.close(fig)
     log.info("Wrote %s", PLOT_PNG)
 

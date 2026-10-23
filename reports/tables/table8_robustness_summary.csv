@@ -1,0 +1,10 @@
+Objection tested,Method,Key statistic,Conclusion
+Look-ahead bias in the training window,One-month training embargo; 5 automated timing assertions,0 training labels use a price at or after the prediction month,No leakage; the embargoed protocol is implementable.
+The model cannot distinguish sectors,Add 10 sector dummies + 8 macro × sector interactions,"ΔAUC(D−C) -0.0255 [-0.0511, -0.0025]",Sector identity does not rescue the LLM; it makes the tree pair worse.
+XLC's late listing distorts the panel,Refit on the 10 sectors present throughout,0 of 12 model-sample AUC CIs exclude 0.50 (93- and 52-month samples),The null is not an artefact of the unbalanced universe.
+The signal is priced faster than monthly,"FOMC event windows at 1, 3, 5, 10, 21, 42 trading days","largest absolute mean IC +0.0364 at 1d, t(NW) 1.15",No horizon shows a signal; it is not a rebalance-frequency problem.
+Long-only results are a market-beta story,"Cross-sectional long-short spread, then Carhart regression","LLM L/S β_MOM 0.45 (t 4.82), Carhart α 0.69%",Removing beta reveals no selection skill; what is left is momentum.
+The inference method flatters the null,"Newey-West, month-clustered bootstrap, permutation, BH-FDR",0 of 6 signals survive FDR at 5%,Three independent frameworks agree; the null is not a method artefact.
+The portfolio parameters were badly chosen,"Top-N × transaction-cost grid (140 cells), no ex-post selection",4 of 80 model cells beat equal weight,"No parameter corner rescues the models; wins are isolated, not systematic."
+Multicollinearity in the macro block masks the LLM,"PCA the 14 macro features, 90% training variance rule","6 of 14 PCs retained; ΔAUC -0.0034 and +0.0225, both CIs span 0",Orthogonalising macro does not let the LLM in; this explanation is closed.
+The LLM helps the probabilities even if not the ranking,"Brier / log loss / ECE, Murphy decomposition, bootstrap on ΔBrier","ΔBrier(B−A) +0.0045 [+0.0006, +0.0092]","Calibration is significantly worse with the LLM, not better."

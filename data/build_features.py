@@ -56,6 +56,10 @@ MAX_LOOKBACK_MONTHS = max(RETURN_HORIZONS.values())
 DATA_DIR = Path(__file__).resolve().parent
 RAW_DIR = DATA_DIR / "raw"
 
+sys.path.insert(0, str(DATA_DIR.parent / "common"))
+
+import universe as U  # noqa: E402
+
 log = logging.getLogger("build_features")
 
 
@@ -173,14 +177,17 @@ def audit_lags(unlagged: pd.DataFrame, lagged: pd.DataFrame, lag: int = LAG) -> 
 # Orchestration
 # --------------------------------------------------------------------------
 
-def build(start_str: str, end_str: str, force: bool) -> int:
+def build(start_str: str, end_str: str, force: bool,
+          universe: str = U.DEFAULT_UNIVERSE) -> int:
     start = C.month_end(start_str)
     end = C.month_end(end_str)
     if start >= end:
         log.error("--start (%s) must be before --end (%s)", start_str, end_str)
         return 2
 
-    out_path = DATA_DIR / "sector_features.csv"
+    assets = U.tickers(universe)
+    out_path = U.path_for(DATA_DIR / "sector_features.csv", universe)
+    log.info("universe %r: %d assets -- %s", universe, len(assets), ", ".join(assets))
     if out_path.exists() and not force:
         log.error("%s already exists; pass --force to overwrite", out_path)
         return 1
@@ -198,7 +205,7 @@ def build(start_str: str, end_str: str, force: bool) -> int:
     # Both paths resample independently; align before assembling.
     rvol = rvol.reindex(monthly.index)
 
-    unlagged = assemble(returns, rvol, C.SECTOR_ETFS)
+    unlagged = assemble(returns, rvol, assets)
     lagged = lag_features(unlagged)
 
     failures = audit_lags(unlagged, lagged)
@@ -230,7 +237,7 @@ def build(start_str: str, end_str: str, force: bool) -> int:
     log.info("Wrote %s (%d rows x %d columns)", out_path, *win.shape)
 
     # Report coverage per ticker rather than per column - 44 lines is noise.
-    for ticker in C.SECTOR_ETFS:
+    for ticker in assets:
         cols = [c for c in win.columns if c.startswith(f"{ticker}_")]
         block = win[cols]
         n_missing = int(block.isna().sum().sum())
@@ -252,6 +259,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--start", default=C.DEFAULT_START, help="first month, YYYY-MM")
     parser.add_argument("--end", default=C.DEFAULT_END, help="last month, YYYY-MM")
     parser.add_argument("--force", action="store_true", help="overwrite existing CSV")
+    parser.add_argument("--universe", default=U.DEFAULT_UNIVERSE, choices=sorted(U.UNIVERSES),
+                        help="asset universe (default %(default)s)")
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
 
@@ -260,7 +269,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s  %(levelname)-7s %(message)s",
         datefmt="%H:%M:%S",
     )
-    return build(args.start, args.end, args.force)
+    return build(args.start, args.end, args.force, args.universe)
 
 
 if __name__ == "__main__":

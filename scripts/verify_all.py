@@ -37,6 +37,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "data"))
 sys.path.insert(0, str(REPO_ROOT / "models"))
 sys.path.insert(0, str(REPO_ROOT / "backtest"))
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 log = logging.getLogger("verify")
 
@@ -510,6 +511,81 @@ def doc_paths_exist() -> str:
     if missing:
         raise AssertionError(f"{len(missing)} dangling path(s): {missing[:4]}")
     return f"{checked} distinct repo paths referenced across the docs, all present"
+
+
+# ==========================================================================
+# Group: reports
+# ==========================================================================
+
+@check("reports", "Report tables match their source CSVs")
+def report_tables_current() -> str:
+    """Rebuild every table in memory and compare against what is committed.
+
+    The report is written from reports/tables/. If an analysis is re-run and a
+    table is not rebuilt, the report silently quotes a superseded number. This
+    turns that into a failing check rather than a misprint.
+    """
+    import build_report_tables as brt
+
+    missing = [p.name for p in (brt.MODELS_CSV, brt.RANKING_CSV, brt.PCA_CSV,
+                                brt.LADDER_CSV, brt.PERFORMANCE_CSV, brt.IC_CSV,
+                                brt.REDUNDANCY_CSV, brt.HORIZON_CSV, brt.FACTOR_CSV,
+                                brt.COMMON_CSV, brt.GRID_CSV, brt.CALIB_CSV)
+               if not p.exists()]
+    if missing:
+        raise Skip(f"missing {', '.join(missing)}")
+    if not brt.OUT_DIR.exists():
+        raise AssertionError("reports/tables/ does not exist -- run "
+                             "python scripts/build_report_tables.py")
+
+    built = brt.build(sorted(brt.TABLES))
+    problems = brt.check(built, brt.OUT_DIR)
+    if problems:
+        raise AssertionError(f"{len(problems)} stale table(s): {problems[:3]}")
+    cells = sum(f.size for f, _, _ in built.values())
+    return f"{len(built)} tables, {cells} cells, all rebuilt and identical to the committed files"
+
+
+@check("reports", "Every figure is at least 300 DPI")
+def figures_are_print_resolution() -> str:
+    """A 150 DPI figure looks fine on screen and blurry in a printed report."""
+    try:
+        from PIL import Image
+    except ImportError:
+        raise Skip("Pillow not installed")
+
+    figures = sorted((REPO_ROOT / "viz").glob("*.png"))
+    extra = REPO_ROOT / "backtest" / "equity_curves.png"
+    if extra.exists():
+        figures.append(extra)
+    if not figures:
+        raise Skip("no figures found")
+
+    low = []
+    for path in figures:
+        dpi = Image.open(path).info.get("dpi", (0, 0))[0]
+        if dpi < 299.9:
+            low.append(f"{path.name} ({dpi:.0f})")
+    if low:
+        raise AssertionError(f"{len(low)} figure(s) below 300 DPI: {low[:4]}")
+    return f"all {len(figures)} figures at 300 DPI"
+
+
+@check("reports", "Every figure has a caption, and every caption a figure")
+def captions_cover_figures() -> str:
+    captions = REPO_ROOT / "reports" / "figures" / "captions.md"
+    if not captions.exists():
+        raise Skip("reports/figures/captions.md not found")
+    text = captions.read_text(encoding="utf-8")
+
+    figures = sorted((REPO_ROOT / "viz").glob("*.png"))
+    extra = REPO_ROOT / "backtest" / "equity_curves.png"
+    if extra.exists():
+        figures.append(extra)
+    uncaptioned = [f.name for f in figures if f.name not in text]
+    if uncaptioned:
+        raise AssertionError(f"{len(uncaptioned)} figure(s) with no caption: {uncaptioned}")
+    return f"{len(figures)} figures, each named in captions.md"
 
 
 # ==========================================================================

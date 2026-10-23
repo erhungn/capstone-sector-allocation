@@ -44,7 +44,13 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-SECTORS = ["XLK", "XLF", "XLE", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB", "XLRE", "XLC"]
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "common"))
+
+import universe as U  # noqa: E402
+
+# Universe-dependent; configure() rebinds these. They start at the main
+# specification so an unparameterised import still describes the 11-asset build.
+SECTORS = list(U.EQUITY_SECTORS)
 
 # Per-ticker feature stems in sector_features.csv, mapped to their panel names.
 SECTOR_FEATURES = {
@@ -61,7 +67,7 @@ TARGET_COLUMNS = ["y_fwd_return", "y_benchmark_return", "y_excess_return", "targ
 # XLC is the reference level, so its dummies are all zero. It is the natural
 # choice: it is the youngest sector and absent from the panel until 2019-07,
 # so making it the reference keeps the remaining ten columns fully populated.
-REFERENCE_SECTOR = "XLC"
+REFERENCE_SECTOR = U.REFERENCE_TICKER
 DUMMY_SECTORS = [t for t in SECTORS if t != REFERENCE_SECTOR]
 
 # Economically motivated macro x sector terms. A linear model cannot otherwise
@@ -69,16 +75,7 @@ DUMMY_SECTORS = [t for t in SECTORS if t != REFERENCE_SECTOR]
 # directions -- every sector sees an identical macro row each month, so a single
 # coefficient has to serve all eleven. Trees can find these splits unaided
 # given the dummies; the columns are built once and shared for comparability.
-INTERACTIONS = [
-    ("VIX_lag1", "XLE"),        # energy is high-beta to volatility
-    ("VIX_lag1", "XLU"),        # utilities are defensive
-    ("VIX_lag1", "XLF"),        # financials sensitive to volatility
-    ("T10Y2Y_lag1", "XLF"),     # banks earn the curve
-    ("T10Y2Y_lag1", "XLRE"),    # real estate is rate sensitive
-    ("T10Y2Y_lag1", "XLU"),     # utilities trade as bond proxies
-    ("WTI_lag1", "XLE"),        # energy tracks crude
-    ("CPI_YOY_lag2", "XLP"),    # staples as an inflation hedge
-]
+INTERACTIONS = list(U.INTERACTIONS_EQUITY)
 
 # --- derived sentiment features -------------------------------------------
 # Built from the full 120 x 11 sentiment matrix rather than the filtered panel:
@@ -99,6 +96,17 @@ SECTOR_CSV = DATA_DIR / "sector_features.csv"
 SENTIMENT_CSV = DATA_DIR / "llm_sentiment.csv"
 PRICES_CSV = DATA_DIR / "sector_prices.csv"
 OUT_CSV = DATA_DIR / "model_dataset.csv"
+
+
+def configure(universe: str) -> None:
+    """Rebind the universe-dependent module state and output paths."""
+    global SECTORS, DUMMY_SECTORS, INTERACTIONS, SECTOR_CSV, SENTIMENT_CSV, OUT_CSV
+    SECTORS = U.tickers(universe)
+    DUMMY_SECTORS = U.dummy_tickers(universe)
+    INTERACTIONS = U.interactions(universe)
+    SECTOR_CSV = U.path_for(DATA_DIR / "sector_features.csv", universe)
+    SENTIMENT_CSV = U.path_for(DATA_DIR / "llm_sentiment.csv", universe)
+    OUT_CSV = U.path_for(DATA_DIR / "model_dataset.csv", universe)
 
 log = logging.getLogger("build_dataset")
 
@@ -255,7 +263,10 @@ def add_cross_sectional_ranks(panel: pd.DataFrame) -> pd.DataFrame:
     return panel
 
 
-def build(skip_sentiment: bool) -> int:
+def build(skip_sentiment: bool, universe: str = U.DEFAULT_UNIVERSE) -> int:
+    configure(universe)
+    log.info("universe %r: %d assets, %d dummies (%s reference), %d interactions",
+             universe, len(SECTORS), len(DUMMY_SECTORS), REFERENCE_SECTOR, len(INTERACTIONS))
     needed = [MACRO_CSV, SECTOR_CSV, PRICES_CSV] + ([] if skip_sentiment else [SENTIMENT_CSV])
     for path in needed:
         if not path.exists():
@@ -264,7 +275,22 @@ def build(skip_sentiment: bool) -> int:
 
     macro = read_indexed(MACRO_CSV)
     sector = read_indexed(SECTOR_CSV)
+    # sector_prices.csv holds every ticker any universe can contain, so it must
+    # be cut to this universe BEFORE the target is built: build_target averages
+    # whatever columns it is handed, and an unfiltered frame would silently
+    # compute the equal-weight benchmark -- and therefore the label -- over
+    # assets this specification does not trade.
     prices = read_indexed(PRICES_CSV)
+    extra = [c for c in prices.columns if c not in SECTORS]
+    prices = prices[[c for c in SECTORS if c in prices.columns]]
+    if extra:
+        log.info("prices: kept %d universe column(s), dropped %s",
+                 prices.shape[1], ", ".join(extra))
+    missing_prices = [c for c in SECTORS if c not in prices.columns]
+    if missing_prices:
+        log.error("sector_prices.csv is missing %s -- re-run data/collect.py",
+                  ", ".join(missing_prices))
+        return 1
     log.info("macro %s | sector %s | prices %s", macro.shape, sector.shape, prices.shape)
 
     if not macro.index.equals(sector.index) or not macro.index.equals(prices.index):
@@ -551,6 +577,8 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--skip-sentiment", action="store_true",
                         help="build without llm_sentiment.csv")
+    parser.add_argument("--universe", default=U.DEFAULT_UNIVERSE, choices=sorted(U.UNIVERSES),
+                        help="asset universe (default %(default)s)")
     parser.add_argument("--verbose", "-v", action="store_true")
     args = parser.parse_args(argv)
 
@@ -559,7 +587,7 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s  %(levelname)-7s %(message)s",
         datefmt="%H:%M:%S",
     )
-    return build(args.skip_sentiment)
+    return build(args.skip_sentiment, args.universe)
 
 
 if __name__ == "__main__":
